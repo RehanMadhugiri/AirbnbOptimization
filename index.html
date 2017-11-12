@@ -1,0 +1,315 @@
+<!--
+    Rehan Madhugiri
+    Capital One Submission
+    Email: rehan.madhugiri@gmail.com
+    Phone: 703-618-5182
+-->
+
+<html>
+
+    <head>
+
+        <link rel="stylesheet" href="semantic.min.css">
+        <script src="https://use.fontawesome.com/ea85904977.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.min.js"></script>
+        <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script>
+            var lines = [];
+            var listingIDs = [];
+            var prices = [];
+
+            function getPriceData() {
+                for(var i = 0; i < 400; i++) {
+                    if(!contains(listingIDs, lines[i][0])) {
+                        listingIDs.push(lines[i][0]);
+                        console.log(lines[i][1]);
+                        prices.push(lines[i][1]);
+                    }
+                    //else {
+                    //    prices[i]+=lines[i][1];
+                    //}
+                }
+                for(var i = 0; i < prices.length; i++) prices[i] = prices[i]
+                console.log(prices);
+                console.log(listingIDs);
+            }
+
+            function contains(a, obj) {
+                for (var i = 0; i < a.length; i++) {
+                    if (a[i] === obj) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            function drawPriceChart() {
+
+                var ctx = document.getElementById('myChart').getContext('2d');
+                var chart = new Chart(ctx, {
+                    // The type of chart we want to create
+                    type: 'bar',
+
+                    // The data for our dataset
+                    data: {
+                        labels: ["January", "February", "March", "April", "May", "June", "July"],
+                        datasets: [{
+                            label: "Price per night",
+                            backgroundColor: 'rgb(255, 99, 132)',
+                            borderColor: 'rgb(255, 99, 132)',
+                            data: [0, 10, 5, 2, 20, 30, 45],
+
+                        }]
+                    },
+
+                    // Configuration options go here
+                    options: {
+                        scales: {
+                            xAxes: [{
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: "Listing IDs"
+                                }
+                            }],
+
+                            yAxes: [{
+                                scaleLabel: {
+                                    display: true,
+                                    labelString: "Dollars ($)"
+                                }
+                            }]
+                        }
+                    }
+                });
+            }
+
+            function drawScatterChart() {
+                var sum = 0;
+                for(var i = 0; i < lines.length; i++) {
+                    sum += lines[i][1];
+                }
+                var avg = sum/lines.length;
+
+                var ctx = document.getElementById('otherChart').getContext('2d');
+                var scatterChart = new Chart(ctx, {
+                    type: 'scatter',
+                    data: {
+                        datasets: [{
+                            label: 'Scatter Dataset',
+                            data: [{
+                                x: -10,
+                                y: 0
+                            }, {
+                                x: 0,
+                                y: 10
+                            }, {
+                                x: 10,
+                                y: 5
+                            }]
+                        }]
+                    },
+                    options: {
+                        scales: {
+                            xAxes: [{
+                                type: 'linear',
+                                position: 'bottom'
+                            }]
+                        }
+                    }
+                });
+            }
+
+
+            function estimatePrice(){
+                lat = document.getElementById("lat").value;
+                long = document.getElementById("long").value;
+                console.log(lat, long);
+            }
+
+            function idealPrice(){
+                lat = document.getElementById("lat2").value;
+                long = document.getElementById("long2").value;
+                console.log(lat, long);
+            }
+
+            $(document).ready(function (){
+
+                $.ajax({
+                    type: "GET",
+                    url: "calendar_available_only.csv",
+                    dataType: "text",
+                    success: function(data) {processCalendar(data);}
+                });
+
+                function processCalendar(allText){
+                    var allTextLines = allText.split(/\r\n|\n/);
+                    var headers = allTextLines[0].split(',');
+
+                    for (var i=1; i<allTextLines.length; i++) {
+                        var data = allTextLines[i].split(',');
+                        if (data.length == headers.length) {
+
+                            var tarr = [];
+                            for (var j=0; j<headers.length; j++) {
+                                tarr.push(data[j]);
+                            }
+                            lines.push([tarr[0], parseFloat(tarr[tarr.length-1].substring(1))]);
+                        }
+                    }
+                    getPriceData();
+                    drawPriceChart();
+                    drawScatterChart();
+                }
+
+                $("#visualHeader").click(function (){
+                    $('html, body').animate({
+                        scrollTop: $("#visual").offset().top
+                    }, 2000);
+                });
+
+                $("#estimateHeader").click(function (){
+                    $('html, body').animate({
+                        scrollTop: $("#estimate").offset().top
+                    }, 2000);
+                });
+
+                $("#optimizeHeader").click(function (){
+                    $('html, body').animate({
+                        scrollTop: $("#optimize").offset().top
+                    }, 2000);
+                });
+
+                $("#aboutHeader").click(function (){
+                    $('html, body').animate({
+                        scrollTop: $("#about").offset().top
+                    }, 2000);
+                });
+
+            });
+
+        </script>
+
+    </head>
+
+    <body style="padding-bottom: 50px">
+
+    <!-- Menu Header -->
+        <div class="ui inverted segment" style = "margin-bottom: 25px">
+            <div class="ui inverted secondary pointing menu">
+                <a class="item" id = "visualHeader">Data Visualization</a>
+                <a class="item" id = "estimateHeader">Price Estimation</a>
+                <a class="item" id = "optimizeHeader">Bookings Optimization</a>
+                <div class="right menu">
+                    <a class = "item" style="text-align: right" id = "aboutHeader">Rehan Madhugiri</a>
+                    <a href="https://github.com/rehanmadhugiri" target="_blank">
+                        <i class="fa fa-github fa-3x" aria-hidden="true" style="text-align: right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="container" style="text-align: center; margin-bottom: 25px">
+            <h1 style="text-align: center; margin-bottom: 25px">Capital One Submission</h1>
+            <div class="ui small image">
+                <img src="image.png">
+            </div>
+        </div>
+
+        <!-- Data Visualization -->
+        <div class="ui raised padded text container segment" id = "visual" style="border-left: 6px solid coral">
+            <h2 class="ui header">Data Visualization</h2>
+            <canvas id="myChart"></canvas>
+            <canvas id="otherChart"></canvas>
+        </div>
+
+
+        <div class="container" style = "margin: 50px 100px 50px 100px">
+            <h4 class="ui horizontal divider header">
+                Airbnb
+            </h4>
+        </div>
+
+
+        <!-- Price Estimation -->
+        <div class="ui raised padded text container segment" id = "estimate" style="border-left: 6px solid coral">
+
+            <h2 class="ui header" style="margin-bottom: 25px">Price Estimation</h2>
+            <form class="ui form">
+                <h4 class="ui dividing header">Enter a geolocation:</h4>
+                <div class="field">
+                    <div class="two fields">
+                        <div class="field">
+                            <input type="text" name="lat" placeholder="Latitude" id="lat">
+                        </div>
+                        <h3>,</h3>
+                        <div class="field">
+                            <input type="text" name="long" placeholder="Longitude" id="long">
+                        </div>
+                    </div>
+                </div>
+                <div class="ui button" tabindex="0" style="text-align: center" onclick="estimatePrice()">Submit Order</div>
+            </form>
+
+            <p>Weekly Average Income: </p>
+            <p id="average_income"></p>
+
+        </div>
+
+
+        <div class="container" style = "margin: 50px 100px 50px 100px">
+            <h4 class="ui horizontal divider header">
+                Airbnb
+            </h4>
+        </div>
+
+
+        <!-- Bookings Optimization -->
+        <div class="ui raised padded text container segment" id = "optimize" style="border-left: 6px solid coral">
+            <h2 class="ui header">Bookings Optimization</h2>
+            <form class="ui form">
+                <h4 class="ui dividing header">Enter a geolocation:</h4>
+                <div class="field">
+                    <div class="two fields">
+                        <div class="field">
+                            <input type="text" name="lat" placeholder="Latitude" id="lat2">
+                        </div>
+                        <h3>,</h3>
+                        <div class="field">
+                            <input type="text" name="long" placeholder="Longitude" id="long2">
+                        </div>
+                    </div>
+                </div>
+                <div class="ui button" tabindex="0" style="text-align: center" onclick="idealPrice()">Submit Order</div>
+            </form>
+
+            <p>Ideal Price per Night: </p>
+            <p id="ideal price"></p>
+        </div>
+
+
+        <div class="container" style = "margin: 50px 100px 50px 100px">
+            <h4 class="ui horizontal divider header">
+                Airbnb
+            </h4>
+        </div>
+
+
+        <!-- About -->
+        <div class="ui raised padded text container segment" id = "about" style="margin-bottom: 50px; border-left: 6px solid coral">
+            <h2 class="ui header">About the Developer</h2>
+            <p>Hi! my name is Rehan Madhugiri. I am a freshman at the University of Wisconsin-Madison and
+                am pursuing a degree in Computer Science. I am originally from Herndon, Virginia, and I
+                attended Thomas Jefferson High School for Science and Technology in Alexandria.</p>
+            <p>My Contact Information:</p>
+            <ul>
+                <li>Phone: 703-618-5182</li>
+                <li>Personal Email: rehan.madhugiri@gmail.com</li>
+                <li>University Email: madhugiri@wisc.edu</li>
+            </ul>
+        </div>
+
+
+    </body>
+
+</html>
