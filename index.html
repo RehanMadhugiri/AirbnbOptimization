@@ -14,12 +14,20 @@
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.min.js"></script>
         <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+        <script async defer
+                src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCGhWbV0iib3ciYPu0uYjz29gyz24YW7hc">
+        </script>
+
         <script>
             var availableOnlyLines = [];
             var listingIDs = [];
             var prices = [];
             var available = [];
             var hosts = [];
+            var zipcodes = [];
+            var zipcodePrices = [];
+            var numzipcodePrices = [];
+            var geocoder;
 
             function getPriceData() {
                 var numPrices = [];
@@ -116,9 +124,9 @@
                 var myPieChart = new Chart(ctx,{
                     type: 'pie',
                     data: {
-                        labels: ["Super Host", "Not a Super Host"],
+                        labels: ["Listings with a Super Host", "Listings without a Super Host"],
                         datasets: [{
-                            label: ["Super Host", "Not a Super Host"],
+                            label: ["Listings with a Super Host", "Listings without a Super Host"],
                             backgroundColor: ['rgb(0,153,0)', 'rgb(204,0,0)'],
                             data: hostInfo,
 
@@ -157,15 +165,71 @@
             }
 
             function estimatePrice(){
-                lat = document.getElementById("estimateLat").value;
-                long = document.getElementById("estimateLong").value;
-                console.log(lat, long);
+                var lat = parseFloat(document.getElementById("estimateLat").value);
+                var long = parseFloat(document.getElementById("estimateLong").value);
+                geocoder = new google.maps.Geocoder();
+                var latlng = new google.maps.LatLng(lat, long);
+                var zipcode = 0;
+
+                geocoder.geocode({'latLng': latlng}, function(results, status)
+                {
+                    if (status == google.maps.GeocoderStatus.OK) {
+                        if (results[0]) {
+                            for (var i = 0; i < results[0].address_components.length; i++) {
+                                var types = results[0].address_components[i].types;
+
+                                for (var typeIdx = 0; typeIdx < types.length; typeIdx++) {
+                                    if (types[typeIdx] == 'postal_code') {
+                                        zipcode = parseInt(results[0].address_components[i].short_name);
+                                        for(var i = 0; i < zipcodes.length; i++) {
+                                            if(parseInt(zipcodes[i]) == zipcode) {
+                                                var weekPrice = parseFloat(zipcodePrices[i]);
+                                                document.getElementById("average_income").innerHTML = "$" + parseInt(weekPrice);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            document.getElementById("average_income").innerHTML = "No results found";
+                        }
+                    }
+                });
             }
 
             function idealPrice(){
-                lat = document.getElementById("idealLat").value;
-                long = document.getElementById("idealLong").value;
-                console.log(lat, long);
+                var lat = parseFloat(document.getElementById("estimateLat").value);
+                var long = parseFloat(document.getElementById("estimateLong").value);
+                geocoder = new google.maps.Geocoder();
+                var latlng = new google.maps.LatLng(lat, long);
+                var zipcode = 0;
+
+                geocoder.geocode({'latLng': latlng}, function(results, status)
+                {
+                    if (status == google.maps.GeocoderStatus.OK) {
+                        if (results[0]) {
+
+                            for (var i = 0; i < results[0].address_components.length; i++) {
+                                var types = results[0].address_components[i].types;
+
+                                for (var typeIdx = 0; typeIdx < types.length; typeIdx++) {
+                                    if (types[typeIdx] == 'postal_code') {
+                                        zipcode = parseInt(results[0].address_components[i].short_name);
+                                        for(var i = 0; i < zipcodes.length; i++) {
+                                            if(parseInt(zipcodes[i]) == zipcode) {
+                                                var weekPrice = parseFloat(zipcodePrices[i]);
+                                                var pricePerNight = (weekPrice*1.5)/7.0;
+                                                document.getElementById("ideal_price").innerHTML = "$" + parseInt(pricePerNight);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            document.getElementById("ideal_price").innerHTML = "No results found";
+                        }
+                    }
+                });
             }
 
             $(document).ready(function (){
@@ -193,6 +257,47 @@
                     dataType: "text",
                     success: function(data) {processListings(data);}
                 });
+
+                // Load listingsEdited.csv
+                $.ajax({
+                    type: "GET",
+                    url: "listingEdited.csv",
+                    dataType: "text",
+                    success: function(data) {processListingsEdited(data);}
+                });
+
+                function processListingsEdited(allText) {
+                    var allTextavailableOnlyLines = allText.split(/\r\n|\n/);
+                    var headers = allTextavailableOnlyLines[0].split(',');
+                    for (var i=1; i<allTextavailableOnlyLines.length; i++) {
+                        var data = allTextavailableOnlyLines[i].split(',');
+                        if (data.length == headers.length) {
+                            if(!contains(zipcodes, data[1])){
+                                zipcodes.push(data[1]);
+                                if(!data[5] == null) {
+                                    zipcodePrices.push(parseFloat(data[5].substring(1)));
+                                }
+                                else {
+                                    zipcodePrices.push(7 * parseFloat(data[4].substring(1)));
+                                }
+                                numzipcodePrices.push(1);
+                            }
+                            else {
+                                var index = zipcodes.indexOf(data[1]);
+                                if(!data[5] == null) {
+                                    zipcodePrices[index] += parseFloat(data[5].substring(1));
+                                }
+                                else {
+                                    zipcodePrices[index] += 7 * parseFloat(data[4].substring(1));
+                                }
+                                numzipcodePrices[index]++;
+                            }
+                        }
+                    }
+                    for(var i = 0; i < zipcodePrices.length; i++) {
+                        zipcodePrices[i] = zipcodePrices[i] / numzipcodePrices[i];
+                    }
+                }
 
                 // Process calendary_available_only.csv for bar graph
                 function processAvailableOnly(allText){
@@ -246,7 +351,7 @@
                 }
 
 
-                /*  SCROLLING ANIMATIONS  */
+                /*  Scrolling Animations  */
                 $("#visualHeader").click(function (){
                     $('html, body').animate({
                         scrollTop: $("#visual").offset().top
@@ -312,7 +417,7 @@
 
         <div class="container" style = "margin: 50px 100px 50px 100px">
             <h4 class="ui horizontal divider header">
-                Airbnb
+                Airbnb Optimization
             </h4>
         </div>
 
@@ -345,7 +450,7 @@
 
         <div class="container" style = "margin: 50px 100px 50px 100px">
             <h4 class="ui horizontal divider header">
-                Airbnb
+                Airbnb Optimization
             </h4>
         </div>
 
@@ -370,13 +475,13 @@
             </form>
 
             <p>Ideal Price per Night: </p>
-            <p id="ideal price"></p>
+            <p id="ideal_price"></p>
         </div>
 
 
         <div class="container" style = "margin: 50px 100px 50px 100px">
             <h4 class="ui horizontal divider header">
-                Airbnb
+                Airbnb Optimization
             </h4>
         </div>
 
