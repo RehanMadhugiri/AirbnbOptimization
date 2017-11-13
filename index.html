@@ -15,24 +15,29 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.min.js"></script>
         <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
         <script>
-            var lines = [];
+            var availableOnlyLines = [];
             var listingIDs = [];
             var prices = [];
+            var available = [];
+            var hosts = [];
 
             function getPriceData() {
-                for(var i = 0; i < 400; i++) {
-                    if(!contains(listingIDs, lines[i][0])) {
-                        listingIDs.push(lines[i][0]);
-                        console.log(lines[i][1]);
-                        prices.push(lines[i][1]);
+                var numPrices = [];
+                for(var i = 0; i < 2500; i++) {
+                    if (!contains(listingIDs, availableOnlyLines[i][0])) {
+                        listingIDs.push(availableOnlyLines[i][0]);
+                        prices.push(availableOnlyLines[i][1]);
+                        numPrices.push(1);
                     }
-                    //else {
-                    //    prices[i]+=lines[i][1];
-                    //}
+                    else {
+                        var index = prices.indexOf(availableOnlyLines[i][1]);
+                        prices[index] += availableOnlyLines[i][1];
+                        numPrices[index]++;
+                    }
                 }
-                for(var i = 0; i < prices.length; i++) prices[i] = prices[i]
-                console.log(prices);
-                console.log(listingIDs);
+                for(var i = 0; i < prices.length; i++) {
+                    prices[i] = prices[i]/numPrices[i];
+                }
             }
 
             function contains(a, obj) {
@@ -45,7 +50,6 @@
             }
 
             function drawPriceChart() {
-
                 var ctx = document.getElementById('myChart').getContext('2d');
                 var chart = new Chart(ctx, {
                     // The type of chart we want to create
@@ -53,12 +57,12 @@
 
                     // The data for our dataset
                     data: {
-                        labels: ["January", "February", "March", "April", "May", "June", "July"],
+                        labels: listingIDs,
                         datasets: [{
                             label: "Price per night",
                             backgroundColor: 'rgb(255, 99, 132)',
                             borderColor: 'rgb(255, 99, 132)',
-                            data: [0, 10, 5, 2, 20, 30, 45],
+                            data: prices,
 
                         }]
                     },
@@ -84,84 +88,165 @@
                 });
             }
 
-            function drawScatterChart() {
-                var sum = 0;
-                for(var i = 0; i < lines.length; i++) {
-                    sum += lines[i][1];
-                }
-                var avg = sum/lines.length;
-
-                var ctx = document.getElementById('otherChart').getContext('2d');
-                var scatterChart = new Chart(ctx, {
-                    type: 'scatter',
+            function drawAvailableChart() {
+                var availabilityInfo = getAvailabilityInfo();
+                var ctx = document.getElementById('availabilityChart').getContext('2d');
+                var mydoughnutChart = new Chart(ctx,{
+                    type: 'doughnut',
                     data: {
+                        labels: ["Listings Available", "Listings Not Available"],
                         datasets: [{
-                            label: 'Scatter Dataset',
-                            data: [{
-                                x: -10,
-                                y: 0
-                            }, {
-                                x: 0,
-                                y: 10
-                            }, {
-                                x: 10,
-                                y: 5
-                            }]
+                            label: ["Listings Available", "Listings Not Available"],
+                            backgroundColor: ['rgb(255, 205, 86)', 'rgb(54, 162, 235)'],
+                            data: availabilityInfo,
+
                         }]
                     },
                     options: {
-                        scales: {
-                            xAxes: [{
-                                type: 'linear',
-                                position: 'bottom'
-                            }]
+                        animation: {
+                            animateScale: true
                         }
                     }
                 });
             }
 
+            function drawHostChart() {
+                var hostInfo = getHostInfo();
+                var ctx = document.getElementById('superHost').getContext('2d');
+                var myPieChart = new Chart(ctx,{
+                    type: 'pie',
+                    data: {
+                        labels: ["Super Host", "Not a Super Host"],
+                        datasets: [{
+                            label: ["Super Host", "Not a Super Host"],
+                            backgroundColor: ['rgb(0,153,0)', 'rgb(204,0,0)'],
+                            data: hostInfo,
+
+                        }]
+                    },
+                    options: {
+                        animation: {
+                            animateScale: true
+                        }
+                    }
+                });
+            }
+
+            function getHostInfo() {
+                var array = [0, 0];
+                for(var i = 0; i < hosts.length; i++) {
+                    if(hosts[i] == "t") array[0]++;
+                    else if(hosts[i] == "f") array[1]++;
+                }
+                var total = array[0] + array[1];
+                array[0] = Math.floor(array[0]/total * 100);
+                array[1] = Math.floor(array[1]/total * 100);
+                return array;
+            }
+
+            function getAvailabilityInfo() {
+                var array = [0, 0];
+                for(var i = 0; i < available.length; i++) {
+                    if(available[i] == "t") array[0]++;
+                    else if(available[i] == "f") array[1]++;
+                }
+                var total = array[0] + array[1];
+                array[0] = Math.floor(array[0]/total * 100);
+                array[1] = Math.floor(array[1]/total * 100);
+                return array;
+            }
 
             function estimatePrice(){
-                lat = document.getElementById("lat").value;
-                long = document.getElementById("long").value;
+                lat = document.getElementById("estimateLat").value;
+                long = document.getElementById("estimateLong").value;
                 console.log(lat, long);
             }
 
             function idealPrice(){
-                lat = document.getElementById("lat2").value;
-                long = document.getElementById("long2").value;
+                lat = document.getElementById("idealLat").value;
+                long = document.getElementById("idealLong").value;
                 console.log(lat, long);
             }
 
             $(document).ready(function (){
 
+                // Load calendar_available_only.csv
                 $.ajax({
                     type: "GET",
                     url: "calendar_available_only.csv",
                     dataType: "text",
+                    success: function(data) {processAvailableOnly(data);}
+                });
+
+                // Load calendar.csv
+                $.ajax({
+                    type: "GET",
+                    url: "calendar.csv",
+                    dataType: "text",
                     success: function(data) {processCalendar(data);}
                 });
 
-                function processCalendar(allText){
-                    var allTextLines = allText.split(/\r\n|\n/);
-                    var headers = allTextLines[0].split(',');
+                // Load listings.csv
+                $.ajax({
+                    type: "GET",
+                    url: "listings.csv",
+                    dataType: "text",
+                    success: function(data) {processListings(data);}
+                });
 
-                    for (var i=1; i<allTextLines.length; i++) {
-                        var data = allTextLines[i].split(',');
+                // Process calendary_available_only.csv for bar graph
+                function processAvailableOnly(allText){
+                    var allTextavailableOnlyLines = allText.split(/\r\n|\n/);
+                    var headers = allTextavailableOnlyLines[0].split(',');
+
+                    for (var i=1; i<allTextavailableOnlyLines.length; i++) {
+                        var data = allTextavailableOnlyLines[i].split(',');
                         if (data.length == headers.length) {
 
                             var tarr = [];
                             for (var j=0; j<headers.length; j++) {
                                 tarr.push(data[j]);
                             }
-                            lines.push([tarr[0], parseFloat(tarr[tarr.length-1].substring(1))]);
+                            availableOnlyLines.push([tarr[0], parseFloat(tarr[tarr.length-1].substring(1))]);
                         }
                     }
                     getPriceData();
                     drawPriceChart();
-                    drawScatterChart();
                 }
 
+                // Process listings.csv for pie chart
+                function processListings(allText) {
+                    var allTextavailableOnlyLines = allText.split(/\r\n|\n/);
+                    var headers = allTextavailableOnlyLines[0].split(',');
+
+                    for (var i=1; i<allTextavailableOnlyLines.length; i++) {
+                        var data = allTextavailableOnlyLines[i].split(',');
+                        hosts.push(data[1]);
+                    }
+                    drawHostChart();
+                }
+
+                // Process calendar.csv for doughnut chart
+                function processCalendar(allText){
+                    var allTextavailableOnlyLines = allText.split(/\r\n|\n/);
+                    var headers = allTextavailableOnlyLines[0].split(',');
+
+                    for (var i=1; i<allTextavailableOnlyLines.length; i++) {
+                        var data = allTextavailableOnlyLines[i].split(',');
+                        if (data.length == headers.length) {
+
+                            var tarr = [];
+                            for (var j=0; j<headers.length; j++) {
+                                tarr.push(data[j]);
+                            }
+                            available.push(tarr[2]);
+                        }
+                    }
+                    drawAvailableChart();
+                }
+
+
+                /*  SCROLLING ANIMATIONS  */
                 $("#visualHeader").click(function (){
                     $('html, body').animate({
                         scrollTop: $("#visual").offset().top
@@ -219,8 +304,9 @@
         <!-- Data Visualization -->
         <div class="ui raised padded text container segment" id = "visual" style="border-left: 6px solid coral">
             <h2 class="ui header">Data Visualization</h2>
-            <canvas id="myChart"></canvas>
-            <canvas id="otherChart"></canvas>
+            <canvas id="myChart" style = "padding-bottom: 30px"></canvas>
+            <canvas id="availabilityChart" style = "padding-bottom: 30px"></canvas>
+            <canvas id="superHost" style = "padding-bottom: 30px"></canvas>
         </div>
 
 
@@ -240,11 +326,11 @@
                 <div class="field">
                     <div class="two fields">
                         <div class="field">
-                            <input type="text" name="lat" placeholder="Latitude" id="lat">
+                            <input type="text" name="lat" placeholder="Latitude" id="estimateLat">
                         </div>
                         <h3>,</h3>
                         <div class="field">
-                            <input type="text" name="long" placeholder="Longitude" id="long">
+                            <input type="text" name="long" placeholder="Longitude" id="estimateLong">
                         </div>
                     </div>
                 </div>
@@ -272,11 +358,11 @@
                 <div class="field">
                     <div class="two fields">
                         <div class="field">
-                            <input type="text" name="lat" placeholder="Latitude" id="lat2">
+                            <input type="text" name="lat" placeholder="Latitude" id="idealLat">
                         </div>
                         <h3>,</h3>
                         <div class="field">
-                            <input type="text" name="long" placeholder="Longitude" id="long2">
+                            <input type="text" name="long" placeholder="Longitude" id="idealLong">
                         </div>
                     </div>
                 </div>
